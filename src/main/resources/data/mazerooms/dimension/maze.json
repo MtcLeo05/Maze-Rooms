@@ -1,0 +1,10 @@
+{
+    "type": "mazerooms:maze",
+    "generator": {
+        "type": "mazerooms:maze",
+        "biome_source": {
+            "type": "minecraft:fixed",
+            "biome": "mazerooms:maze"
+        }
+    }
+}

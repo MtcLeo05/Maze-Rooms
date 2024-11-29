@@ -1,0 +1,15 @@
+{
+    "required": true,
+    "minVersion": "0.8",
+    "package": "com.leo.mazerooms.mixin",
+    "compatibilityLevel": "JAVA_8",
+    "refmap": "mazerooms.refmap.json",
+    "mixins": [
+        "ChunkMapAccessor"
+    ],
+    "client": [
+    ],
+    "injectors": {
+        "defaultRequire": 1
+    }
+}

@@ -1,0 +1,14 @@
+{
+    "LightBlock": [
+        {
+            "block": "mazerooms:light_block",
+            "color": "#yellow",
+            "radius": 15
+        }
+    ],
+    "Bloom": [
+        {
+            "block": "mazerooms:light_block"
+        }
+    ]
+}

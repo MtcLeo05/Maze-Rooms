@@ -1,0 +1,7 @@
+{
+    "variants": {
+        "": {
+            "model": "mazerooms:block/light_block"
+        }
+    }
+}
