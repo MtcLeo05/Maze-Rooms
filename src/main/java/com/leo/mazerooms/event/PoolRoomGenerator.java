@@ -1,6 +1,6 @@
 package com.leo.mazerooms.event;
 
-import com.leo.mazerooms.MazeRooms;
+import com.leo.mazerooms.Mazerooms;
 import com.leo.mazerooms.config.ServerConfig;
 import com.leo.mazerooms.world.RoomHandler;
 import net.minecraft.core.registries.Registries;
@@ -9,16 +9,16 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.chunk.ChunkAccess;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.EntityEvent;
-import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraftforge.event.entity.EntityEvent;
+import net.minecraftforge.event.entity.EntityJoinLevelEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 
-@EventBusSubscriber(modid = MazeRooms.MODID, bus = EventBusSubscriber.Bus.GAME)
+@Mod.EventBusSubscriber(modid = Mazerooms.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class PoolRoomGenerator {
-    public static final ResourceKey<Level> POOL = ResourceKey.create(Registries.DIMENSION, ResourceLocation.fromNamespaceAndPath(MazeRooms.MODID, "pool"));
+    public static final ResourceKey<Level> POOL = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(Mazerooms.MODID, "pool"));
 
     @SubscribeEvent
     public static void onPlayerChangeChunk(EntityEvent.EnteringSection event) {
@@ -27,7 +27,7 @@ public class PoolRoomGenerator {
         ResourceLocation dimensionName = sLevel.dimension().location();
         if(!dimensionName.getNamespace().equalsIgnoreCase("mazerooms")) return;
 
-        ChunkAccess chunk = sLevel.getChunk(sPlayer.blockPosition());
+        LevelChunk chunk = sLevel.getChunk(sPlayer.chunkPosition().x, sPlayer.chunkPosition().z);
         RoomHandler.handleFutureChunks(chunk, sLevel, dimensionName.getPath());
     }
 

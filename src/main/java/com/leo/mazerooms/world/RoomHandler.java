@@ -1,6 +1,6 @@
 package com.leo.mazerooms.world;
 
-import com.leo.mazerooms.MazeRooms;
+import com.leo.mazerooms.Mazerooms;
 import com.leo.mazerooms.config.ServerConfig;
 import com.leo.mazerooms.data.MazeData;
 import com.leo.mazerooms.data.WallDirection;
@@ -11,7 +11,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Rotation;
-import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
@@ -20,12 +20,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
-import static com.leo.mazerooms.init.ModAttachmentTypes.MAZE_DATA_ATTACHMENT;
-
 public class RoomHandler {
 
-    public static void handleFutureChunks(ChunkAccess current, ServerLevel sLevel, String dimensionName) {
-        for (ChunkAccess chunk : MazeData.getNearbyChunks(current, sLevel)) {
+    public static void handleFutureChunks(LevelChunk current, ServerLevel sLevel, String dimensionName) {
+        for (LevelChunk chunk : MazeData.getNearbyChunks(current, sLevel)) {
             if (chunk == null) continue;
             MazeData data = MazeData.getOrCreateData(chunk);
             if (data.generated() && data.isCorner()) continue;
@@ -36,23 +34,21 @@ public class RoomHandler {
         }
     }
 
-    public static void handleHub(ChunkAccess chunk, ServerLevel level, String dimensionName) {
+    public static void handleHub(LevelChunk chunk, ServerLevel level, String dimensionName) {
         MazeData data = MazeData.getOrCreateData(chunk);
         if (data.generated()) return;
-        placeChunkRoom(chunk, level, ResourceLocation.fromNamespaceAndPath(MazeRooms.MODID, dimensionName + "/room_hub"));
-        data = new MazeData(false, ListUtil.of(WallDirection.values()));
-        chunk.setData(MAZE_DATA_ATTACHMENT, data);
+        placeChunkRoom(chunk, level, new ResourceLocation(Mazerooms.MODID, dimensionName + "/room_hub"));
+        MazeData.execute(chunk, (d) -> d.replace(new MazeData(false, ListUtil.of(WallDirection.values()))));
     }
 
-    public static void handleChunk(ChunkAccess chunk, ServerLevel level, String dimensionName) {
+    public static void handleChunk(LevelChunk chunk, ServerLevel level, String dimensionName) {
         MazeData data = MazeData.getOrCreateData(chunk);
         if (data.generated()) return;
 
         //Check and replace hub room
         if(data.walls().size() >= 4) {
-            placeChunkRoom(chunk, level, ResourceLocation.fromNamespaceAndPath(MazeRooms.MODID, dimensionName + "/room_3_0"));
-            data = new MazeData(true, ListUtil.of(WallDirection.values()));
-            chunk.setData(MAZE_DATA_ATTACHMENT, data);
+            placeChunkRoom(chunk, level, new ResourceLocation(Mazerooms.MODID, dimensionName + "/room_3_0"));
+            MazeData.execute(chunk, (d) -> d.replace(new MazeData(true, ListUtil.of(WallDirection.values()))));
             handleFutureChunks(chunk, level, dimensionName);
             return;
         }
@@ -111,13 +107,12 @@ public class RoomHandler {
             possibleWallMap.remove((Integer) wallDir);
         }
 
-        data = new MazeData(true, walls);
-        chunk.setData(MAZE_DATA_ATTACHMENT, data);
+        MazeData.execute(chunk, (d) -> d.replace(new MazeData(true, walls)));
         handleChunkRoom(chunk, level, dimensionName);
         handleFutureChunks(chunk, level, dimensionName);
     }
 
-    public static void placeChunkRoom(ChunkAccess chunk, ServerLevel level, ResourceLocation room) {
+    public static void placeChunkRoom(LevelChunk chunk, ServerLevel level, ResourceLocation room) {
         ChunkPos cPos = chunk.getPos();
         MazeData data = MazeData.getOrCreateData(chunk);
 
@@ -141,7 +136,7 @@ public class RoomHandler {
         template.placeInWorld(level, toUse, toUse, new StructurePlaceSettings().setRotationPivot(center).setRotation(rot), level.random, 3);
     }
 
-    public static void handleChunkRoom(ChunkAccess chunk, ServerLevel level, String dimensionName) {
+    public static void handleChunkRoom(LevelChunk chunk, ServerLevel level, String dimensionName) {
         placeChunkRoom(chunk, level, getRoomToPlace(chunk, dimensionName));
     }
 
@@ -166,7 +161,7 @@ public class RoomHandler {
         // Hallways / Corners
         if (exitCount == 2) {
             if (data.isCorner()) {
-                WallDirection dir = data.walls().getFirst();
+                WallDirection dir = data.walls().stream().findFirst().get();
 
                 return data.isLeft() ?
                     determineRotation(dir.counterClockwise()) :
@@ -209,14 +204,14 @@ public class RoomHandler {
         };
     }
 
-    public static ResourceLocation getRoomToPlace(ChunkAccess chunk, String dimensionName) {
+    public static ResourceLocation getRoomToPlace(LevelChunk chunk, String dimensionName) {
         MazeData data = MazeData.getOrCreateData(chunk);
         int roomNumber = Math.toIntExact(data.getExitCount());
 
         int availableRoomsPerType = ServerConfig.getRoomNumberFromType(data.isCorner() ? 4 : roomNumber);
         int roomType = new Random().nextInt(0, availableRoomsPerType);
 
-        return ResourceLocation.fromNamespaceAndPath(MazeRooms.MODID, dimensionName + "/room_" + (roomNumber - 1) + (data.isCorner() ? "_c_" : "_") + roomType);
+        return new ResourceLocation(Mazerooms.MODID, dimensionName + "/room_" + (roomNumber - 1) + (data.isCorner() ? "_c_" : "_") + roomType);
     }
 
     public static int getWeightedRandom(int[] values, double[] weights, RandomSource random) {

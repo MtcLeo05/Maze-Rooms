@@ -1,19 +1,19 @@
 package com.leo.mazerooms.config;
 
-import net.neoforged.neoforge.common.ModConfigSpec;
+import net.minecraftforge.common.ForgeConfigSpec;
 
 public class ServerConfig {
 
-    public static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
-    public static final ModConfigSpec SPEC;
+    public static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
+    public static final ForgeConfigSpec SPEC;
 
-    public static final ModConfigSpec.BooleanValue SPAWN_IN_POOLROOMS;
+    public static final ForgeConfigSpec.BooleanValue SPAWN_IN_POOLROOMS;
 
-    public static final ModConfigSpec.IntValue DEAD_END_NUMBER;
-    public static final ModConfigSpec.IntValue HALLWAY_NUMBER;
-    public static final ModConfigSpec.IntValue CORNER_NUMBER;
-    public static final ModConfigSpec.IntValue T_ROOM_NUMBER;
-    public static final ModConfigSpec.IntValue INTERSECTION_NUMBER;
+    public static final ForgeConfigSpec.IntValue DEAD_END_NUMBER;
+    public static final ForgeConfigSpec.IntValue HALLWAY_NUMBER;
+    public static final ForgeConfigSpec.IntValue CORNER_NUMBER;
+    public static final ForgeConfigSpec.IntValue T_ROOM_NUMBER;
+    public static final ForgeConfigSpec.IntValue INTERSECTION_NUMBER;
 
     static {
         BUILDER.push("Maze Configs");

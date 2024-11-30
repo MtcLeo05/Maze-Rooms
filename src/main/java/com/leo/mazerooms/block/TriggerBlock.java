@@ -9,10 +9,9 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.LevelChunk;
 
 public class TriggerBlock extends Block {
     public TriggerBlock(Properties properties) {
@@ -22,34 +21,34 @@ public class TriggerBlock extends Block {
                 .noCollission()
                 .noLootTable()
                 .noOcclusion()
-                .isValidSpawn(Blocks::never)
-                .noTerrainParticles()
+                .isValidSpawn((s, l, p, e) -> false)
+                .noParticlesOnBreak()
         );
     }
 
     @Override
-    protected boolean propagatesSkylightDown(BlockState state, BlockGetter level, BlockPos pos) {
+    public boolean propagatesSkylightDown(BlockState state, BlockGetter level, BlockPos pos) {
         return true;
     }
 
     @Override
-    protected float getShadeBrightness(BlockState state, BlockGetter level, BlockPos pos) {
+    public float getShadeBrightness(BlockState state, BlockGetter level, BlockPos pos) {
         return 1f;
     }
 
     @Override
-    protected RenderShape getRenderShape(BlockState state) {
+    public RenderShape getRenderShape(BlockState state) {
         return RenderShape.INVISIBLE;
     }
 
     @Override
-    protected void entityInside(BlockState state, Level level, BlockPos pos, Entity entity) {
+    public void entityInside(BlockState state, Level level, BlockPos pos, Entity entity) {
         if(!(entity instanceof ServerPlayer sPlayer)) return;
         if(!(sPlayer.level() instanceof ServerLevel sLevel)) return;
         ResourceLocation dimensionName = sLevel.dimension().location();
         if(!dimensionName.getNamespace().equalsIgnoreCase("mazerooms")) return;
 
-        ChunkAccess chunk = sLevel.getChunk(sPlayer.blockPosition());
+        LevelChunk chunk = sLevel.getChunk(sPlayer.chunkPosition().x, sPlayer.chunkPosition().z);
         RoomHandler.handleChunk(chunk, sLevel, dimensionName.getPath());
         RoomHandler.handleFutureChunks(chunk, sLevel, dimensionName.getPath());
 
