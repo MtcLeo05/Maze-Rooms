@@ -3,6 +3,7 @@ package com.leo.mazerooms.event;
 import com.leo.mazerooms.MazeRooms;
 import com.leo.mazerooms.config.ServerConfig;
 import com.leo.mazerooms.data.MazeData;
+import com.leo.mazerooms.data.WallDirection;
 import com.leo.mazerooms.mixin.ChunkMapAccessor;
 import com.leo.mazerooms.util.ListUtil;
 import net.minecraft.core.BlockPos;
@@ -89,7 +90,7 @@ public class PoolRoomGenerator {
 
         if (chunk.getPos().equals(new ChunkPos(0, 0))) {
             placeChunkRoom(chunk, level, cData.generated()? ResourceLocation.fromNamespaceAndPath(MazeRooms.MODID, "room_3_0"): ResourceLocation.fromNamespaceAndPath(MazeRooms.MODID, "room_hub"));
-            cData = new MazeData(true, ListUtil.of(true, true, true, true));
+            cData = new MazeData(true, ListUtil.of(WallDirection.values()));
 
             chunk.setData(MAZE_DATA_ATTACHMENT, cData);
             return;
@@ -98,17 +99,19 @@ public class PoolRoomGenerator {
         if (cData.generated()) return;
 
         boolean gen = true;
-        List<Boolean> walls = ListUtil.of(false, false, false, false);
+        List<WallDirection> walls = ListUtil.of();
 
         MazeData[] nearbyData = MazeData.getNearbyChunkData(chunk, level);
 
         int length = nearbyData.length;
         boolean cont = false;
 
+
+
         for (int i = 0; i < length; i++) {
             if(nearbyData[i].generated()) cont = true;
-            if (!nearbyData[i].walls().get(i)) continue;
-            walls.set((i + 2) % 4, true);
+            if (!nearbyData[i].hasDirection(WallDirection.fromIndex(i))) continue;
+            walls.add(WallDirection.fromIndex(i));
             break;
         }
 
@@ -124,7 +127,7 @@ public class PoolRoomGenerator {
             int oppositeWall = (wallToOpen + 2) % 4;
 
             boolean chunkGen = nearbyData[oppositeWall].generated();
-            boolean isOppositeWallOpen = nearbyData[oppositeWall].walls().get(oppositeWall);
+            boolean isOppositeWallOpen = nearbyData[oppositeWall].hasDirection(WallDirection.fromIndex(oppositeWall));
 
             if(chunkGen && !isOppositeWallOpen) {
                 possibleWallMap.remove(wallToOpen);
@@ -132,7 +135,7 @@ public class PoolRoomGenerator {
                 continue;
             }
 
-            boolean isSelectedWallOpen = walls.get(wallToOpen);
+            boolean isSelectedWallOpen = walls.contains(WallDirection.fromIndex(wallToOpen));
 
             if (isSelectedWallOpen) {
                 possibleWallMap.remove(wallToOpen);
@@ -140,7 +143,7 @@ public class PoolRoomGenerator {
                 continue;
             }
 
-            walls.set(wallToOpen, true);
+            walls.add(WallDirection.fromIndex(wallToOpen));
             possibleWallMap.remove(wallToOpen);
         }
 
@@ -177,31 +180,12 @@ public class PoolRoomGenerator {
         placeChunkRoom(chunk, level, getRoomToPlace(chunk));
     }
 
-    public static void prettyPrint(MazeData data) {
-        char[][] grid = {{'X', 'X', 'X'}, // Row 0
-            {'X', 'O', 'X'}, // Row 1 (center O)
-            {'X', 'X', 'X'}  // Row 2
-        };
-
-        if (data.walls().get(0)) grid[0][1] = 'O'; // North
-        if (data.walls().get(1)) grid[1][2] = 'O'; // East
-        if (data.walls().get(2)) grid[2][1] = 'O'; // South
-        if (data.walls().get(3)) grid[1][0] = 'O'; // West
-
-        for (char[] row : grid) {
-            for (char cell : row) {
-                System.out.print(cell + " ");
-            }
-            System.out.println();
-        }
-    }
-
     public static Rotation getRotation(MazeData data) {
         int n = data.walls().size();
 
         int start = -1;
         for (int i = 0; i < n; i++) {
-            if (data.walls().get(i)) {
+            if (data.hasDirection(WallDirection.fromIndex(i))) {
                 start = i;
                 break;
             }
@@ -223,9 +207,13 @@ public class PoolRoomGenerator {
                     determineRotation((cornerStart + 2) % 4):
                     determineRotation((cornerStart + 3) % 4);
             } else {
-                if (data.walls().get(0) && data.walls().get(2)) {
+                if(data.hasDirection(WallDirection.fromIndex(0)) &&
+                    data.hasDirection(WallDirection.fromIndex(2))) {
                     return Rotation.NONE;
-                } else if (data.walls().get(1) && data.walls().get(3)) {
+                }
+
+                if(data.hasDirection(WallDirection.fromIndex(1)) &&
+                    data.hasDirection(WallDirection.fromIndex(3))) {
                     return Rotation.CLOCKWISE_90;
                 }
             }
@@ -235,7 +223,7 @@ public class PoolRoomGenerator {
         if (exitCount == 3) {
             int wallDirection = -1;
             for (int i = 0; i < n; i++) {
-                if (!data.walls().get(i)) {
+                if (!data.hasDirection(WallDirection.fromIndex(i))) {
                     wallDirection = i;
                     break;
                 }
