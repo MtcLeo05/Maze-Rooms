@@ -24,7 +24,7 @@ import static com.leo.mazerooms.init.ModAttachmentTypes.MAZE_DATA_ATTACHMENT;
 
 public class RoomHandler {
 
-    public static void handleFutureChunks(ChunkAccess current, ServerLevel sLevel) {
+    public static void handleFutureChunks(ChunkAccess current, ServerLevel sLevel, String dimensionName) {
         for (ChunkAccess chunk : MazeData.getNearbyChunks(current, sLevel)) {
             if (chunk == null) continue;
             MazeData data = MazeData.getOrCreateData(chunk);
@@ -32,28 +32,28 @@ public class RoomHandler {
             MazeData[] nearData = MazeData.getNearbyChunkData(chunk, sLevel);
 
             if(Arrays.stream(nearData).noneMatch(MazeData::generated)) continue;
-            handleChunk(chunk, sLevel);
+            handleChunk(chunk, sLevel, dimensionName);
         }
     }
 
-    public static void handleHub(ChunkAccess chunk, ServerLevel level) {
+    public static void handleHub(ChunkAccess chunk, ServerLevel level, String dimensionName) {
         MazeData data = MazeData.getOrCreateData(chunk);
         if (data.generated()) return;
-        placeChunkRoom(chunk, level, ResourceLocation.fromNamespaceAndPath(MazeRooms.MODID, "room_hub"));
+        placeChunkRoom(chunk, level, ResourceLocation.fromNamespaceAndPath(MazeRooms.MODID, dimensionName + "/room_hub"));
         data = new MazeData(false, ListUtil.of(WallDirection.values()));
         chunk.setData(MAZE_DATA_ATTACHMENT, data);
     }
 
-    public static void handleChunk(ChunkAccess chunk, ServerLevel level) {
+    public static void handleChunk(ChunkAccess chunk, ServerLevel level, String dimensionName) {
         MazeData data = MazeData.getOrCreateData(chunk);
         if (data.generated()) return;
 
         //Check and replace hub room
         if(data.walls().size() >= 4) {
-            placeChunkRoom(chunk, level, ResourceLocation.fromNamespaceAndPath(MazeRooms.MODID, "room_3_0"));
+            placeChunkRoom(chunk, level, ResourceLocation.fromNamespaceAndPath(MazeRooms.MODID, dimensionName + "/room_3_0"));
             data = new MazeData(true, ListUtil.of(WallDirection.values()));
             chunk.setData(MAZE_DATA_ATTACHMENT, data);
-            handleFutureChunks(chunk, level);
+            handleFutureChunks(chunk, level, dimensionName);
             return;
         }
 
@@ -113,9 +113,8 @@ public class RoomHandler {
 
         data = new MazeData(true, walls);
         chunk.setData(MAZE_DATA_ATTACHMENT, data);
-        MazeRooms.LOGGER.info("Generated chunk x{} z{}", chunk.getPos().x, chunk.getPos().z);
-        handleChunkRoom(chunk, level);
-        handleFutureChunks(chunk, level);
+        handleChunkRoom(chunk, level, dimensionName);
+        handleFutureChunks(chunk, level, dimensionName);
     }
 
     public static void placeChunkRoom(ChunkAccess chunk, ServerLevel level, ResourceLocation room) {
@@ -142,8 +141,8 @@ public class RoomHandler {
         template.placeInWorld(level, toUse, toUse, new StructurePlaceSettings().setRotationPivot(center).setRotation(rot), level.random, 3);
     }
 
-    public static void handleChunkRoom(ChunkAccess chunk, ServerLevel level) {
-        placeChunkRoom(chunk, level, getRoomToPlace(chunk));
+    public static void handleChunkRoom(ChunkAccess chunk, ServerLevel level, String dimensionName) {
+        placeChunkRoom(chunk, level, getRoomToPlace(chunk, dimensionName));
     }
 
     public static Rotation gerRoomRotation(MazeData data) {
@@ -210,14 +209,14 @@ public class RoomHandler {
         };
     }
 
-    public static ResourceLocation getRoomToPlace(ChunkAccess chunk) {
+    public static ResourceLocation getRoomToPlace(ChunkAccess chunk, String dimensionName) {
         MazeData data = MazeData.getOrCreateData(chunk);
         int roomNumber = Math.toIntExact(data.getExitCount());
 
         int availableRoomsPerType = ServerConfig.getRoomNumberFromType(data.isCorner() ? 4 : roomNumber);
         int roomType = new Random().nextInt(0, availableRoomsPerType);
 
-        return ResourceLocation.fromNamespaceAndPath(MazeRooms.MODID, "room_" + (roomNumber - 1) + (data.isCorner() ? "_c_" : "_") + roomType);
+        return ResourceLocation.fromNamespaceAndPath(MazeRooms.MODID, dimensionName + "/room_" + (roomNumber - 1) + (data.isCorner() ? "_c_" : "_") + roomType);
     }
 
     public static int getWeightedRandom(int[] values, double[] weights, RandomSource random) {

@@ -2,6 +2,7 @@ package com.leo.mazerooms.block;
 
 import com.leo.mazerooms.world.RoomHandler;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -12,8 +13,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
-
-import static com.leo.mazerooms.event.PoolRoomGenerator.MAZE;
 
 public class TriggerBlock extends Block {
     public TriggerBlock(Properties properties) {
@@ -47,11 +46,12 @@ public class TriggerBlock extends Block {
     protected void entityInside(BlockState state, Level level, BlockPos pos, Entity entity) {
         if(!(entity instanceof ServerPlayer sPlayer)) return;
         if(!(sPlayer.level() instanceof ServerLevel sLevel)) return;
-        if(!sLevel.dimension().equals(MAZE)) return;
+        ResourceLocation dimensionName = sLevel.dimension().location();
+        if(!dimensionName.getNamespace().equalsIgnoreCase("mazerooms")) return;
 
-        ChunkAccess chunk = level.getChunk(sPlayer.blockPosition());
-        RoomHandler.handleChunk(chunk, sLevel);
-        RoomHandler.handleFutureChunks(chunk, sLevel);
+        ChunkAccess chunk = sLevel.getChunk(sPlayer.blockPosition());
+        RoomHandler.handleChunk(chunk, sLevel, dimensionName.getPath());
+        RoomHandler.handleFutureChunks(chunk, sLevel, dimensionName.getPath());
 
         level.removeBlock(pos, false);
 

@@ -18,16 +18,17 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
 @EventBusSubscriber(modid = MazeRooms.MODID, bus = EventBusSubscriber.Bus.GAME)
 public class PoolRoomGenerator {
-    public static final ResourceKey<Level> MAZE = ResourceKey.create(Registries.DIMENSION, ResourceLocation.fromNamespaceAndPath(MazeRooms.MODID, "maze"));
+    public static final ResourceKey<Level> POOL = ResourceKey.create(Registries.DIMENSION, ResourceLocation.fromNamespaceAndPath(MazeRooms.MODID, "pool"));
 
     @SubscribeEvent
     public static void onPlayerChangeChunk(EntityEvent.EnteringSection event) {
         if(!(event.getEntity().level() instanceof ServerLevel sLevel)) return;
         if(!(event.getEntity() instanceof ServerPlayer sPlayer)) return;
-        if(!sLevel.dimension().location().getNamespace().equalsIgnoreCase("mazerooms")) return;
+        ResourceLocation dimensionName = sLevel.dimension().location();
+        if(!dimensionName.getNamespace().equalsIgnoreCase("mazerooms")) return;
 
         ChunkAccess chunk = sLevel.getChunk(sPlayer.blockPosition());
-        RoomHandler.handleFutureChunks(chunk, sLevel);
+        RoomHandler.handleFutureChunks(chunk, sLevel, dimensionName.getPath());
     }
 
     @SubscribeEvent
@@ -38,7 +39,7 @@ public class PoolRoomGenerator {
         if(!sLevel.dimension().equals(Level.OVERWORLD)) return;
 
         sPlayer.teleportTo(
-            sLevel.getServer().getLevel(MAZE),
+            sLevel.getServer().getLevel(POOL),
             7.5,
             3,
             7.5,
@@ -51,8 +52,11 @@ public class PoolRoomGenerator {
     public static void onPlayerChangeDimension(EntityJoinLevelEvent event) {
         if(!(event.getEntity().level() instanceof ServerLevel sLevel)) return;
         if(!(event.getEntity() instanceof ServerPlayer sPlayer)) return;
-        if(!sLevel.dimension().location().getNamespace().equalsIgnoreCase("mazerooms")) return;
+        ResourceLocation dimensionName = sLevel.dimension().location();
+        if(!dimensionName.getNamespace().equalsIgnoreCase("mazerooms")) return;
 
-        RoomHandler.handleHub(sLevel.getChunk(sPlayer.chunkPosition().x, sPlayer.chunkPosition().z), sLevel);
+        RoomHandler.handleHub(
+            sLevel.getChunk(sPlayer.chunkPosition().x,
+                sPlayer.chunkPosition().z), sLevel, dimensionName.getPath());
     }
 }
