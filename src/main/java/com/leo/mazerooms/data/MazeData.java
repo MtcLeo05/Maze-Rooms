@@ -15,18 +15,18 @@ import java.util.List;
 
 import static com.leo.mazerooms.init.ModAttachmentTypes.MAZE_DATA_ATTACHMENT;
 
-public record MazeData(boolean generated, List<Boolean> walls) implements CustomPacketPayload {
+public record MazeData(boolean generated, List<WallDirection> walls) implements CustomPacketPayload {
     public static final Type<MazeData> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(MazeRooms.MODID, "maze_data"));
 
     public static final MazeData NEW_DATA = new MazeData(
         false,
-        ListUtil.of(false, false, false, false)
+        ListUtil.of()
     );
 
     public static final Codec<MazeData> CODEC = RecordCodecBuilder.create(
         inst -> inst.group(
             Codec.BOOL.fieldOf("generated").forGetter(d -> d.generated),
-            Codec.BOOL.listOf().fieldOf("walls").forGetter(d -> d.walls)
+            WallDirection.CODEC.listOf().fieldOf("walls").forGetter(d -> d.walls)
         ).apply(inst, MazeData::new)
     );
 
@@ -38,30 +38,41 @@ public record MazeData(boolean generated, List<Boolean> walls) implements Custom
         return chunk.getData(MAZE_DATA_ATTACHMENT);
     }
 
-    public long getExitCount() {
-        return walls().stream().filter(Boolean::booleanValue).count();
+    public int getExitCount() {
+        return walls().size();
     }
 
     public boolean isCorner() {
         if(getExitCount() != 2) return false;
 
-        for (int i = 0; i < walls().size(); i++) {
-            if(walls().get(i) && walls().get((i + 2) % 4)) return false;
-            if(walls().get(i) && walls().get((i + 1) % 4)) return true;
-            if(walls().get(i) && walls().get((i + 3) % 4)) return true;
+        for (WallDirection dir : walls) {
+            if(hasOpposite(dir)) return false;
+            if(hasClockwise(dir) || hasCounterClockwise(dir)) return true;
         }
 
         return false;
     }
 
+    public boolean hasDirection(WallDirection dir) {
+        return walls.contains(dir);
+    }
+
+    public boolean hasClockwise(WallDirection dir) {
+        return hasDirection(dir.clockwise());
+    }
+    public boolean hasOpposite(WallDirection dir) {
+        return hasDirection(dir.opposite());
+    }
+    public boolean hasCounterClockwise(WallDirection dir) {
+        return hasDirection(dir.counterClockwise());
+    }
+
     public boolean isLeft() {
         if(!isCorner()) return false;
-
-        for (int i = 0; i < walls().size(); i++) {
-            if(walls().get(i) && walls().get((i + 1) % 4)) return false;
-            if(walls().get(i) && walls().get((i + 3) % 4)) return true;
+        for (WallDirection dir : walls) {
+            if(hasClockwise(dir)) return false;
+            if(hasCounterClockwise(dir)) return true;
         }
-
         return false;
     }
 
