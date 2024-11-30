@@ -9,7 +9,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.ChunkAccess;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
 
 import java.util.List;
 
@@ -76,6 +75,39 @@ public record MazeData(boolean generated, List<WallDirection> walls) implements 
         return false;
     }
 
+    public static ChunkAccess[] getNearbyChunks(ChunkAccess chunk, Level level) {
+        if(level == null) return null;
+
+        ChunkPos def = chunk.getPos();
+        ChunkPos north, south, east, west;
+
+        north = new ChunkPos(def.x, def.z - 1);
+        east = new ChunkPos(def.x + 1, def.z);
+        south = new ChunkPos(def.x, def.z + 1);
+        west = new ChunkPos(def.x - 1, def.z);
+
+        boolean northA, southA, eastA, westA;
+        ChunkAccess northD, southD, eastD, westD;
+
+        northA = level.hasChunk(north.x, north.z);
+        southA = level.hasChunk(south.x, south.z);
+        eastA = level.hasChunk(east.x, east.z);
+        westA = level.hasChunk(west.x, west.z);
+
+        northD = northA? level.getChunk(north.x, north.z): null;
+        southD = southA? level.getChunk(south.x, south.z): null;
+        eastD = eastA? level.getChunk(east.x, east.z): null;
+        westD = westA? level.getChunk(west.x, west.z): null;
+
+        return new ChunkAccess[] {
+            northD,
+            eastD,
+            southD,
+            westD
+        };
+    }
+
+
     public static MazeData[] getNearbyChunkData(ChunkAccess chunk, Level level) {
         if(level == null) return new MazeData[] {
             NEW_DATA,
@@ -84,33 +116,18 @@ public record MazeData(boolean generated, List<WallDirection> walls) implements 
             NEW_DATA
         };
 
-        ChunkPos def = chunk.getPos();
-        ChunkPos north, south, east, west;
+        MazeData[] toRet = new MazeData[] {NEW_DATA, NEW_DATA, NEW_DATA, NEW_DATA};
 
-        north = new ChunkPos(def.x, def.z + 1);
-        east = new ChunkPos(def.x - 1, def.z);
-        south = new ChunkPos(def.x, def.z - 1);
-        west = new ChunkPos(def.x + 1, def.z);
+        ChunkAccess[] nearbyChunks = getNearbyChunks(chunk, level);
 
-        boolean northA, southA, eastA, westA;
-        MazeData northD, southD, eastD, westD;
+        for (int i = 0; i < nearbyChunks.length; i++) {
+            ChunkAccess c = nearbyChunks[i];
+            if (c == null) continue;
 
-        northA = level.hasChunk(north.x, north.z);
-        southA = level.hasChunk(south.x, south.z);
-        eastA = level.hasChunk(east.x, east.z);
-        westA = level.hasChunk(west.x, west.z);
+            toRet[i] = getOrCreateData(c);
+        }
 
-        northD = northA? MazeData.getOrCreateData(level.getChunk(north.x, north.z, ChunkStatus.SURFACE)): NEW_DATA;
-        southD = southA? MazeData.getOrCreateData(level.getChunk(south.x, south.z, ChunkStatus.SURFACE)): NEW_DATA;
-        eastD = eastA? MazeData.getOrCreateData(level.getChunk(east.x, east.z, ChunkStatus.SURFACE)): NEW_DATA;
-        westD = westA? MazeData.getOrCreateData(level.getChunk(west.x, west.z, ChunkStatus.SURFACE)): NEW_DATA;
-
-        return new MazeData[] {
-            northD,
-            eastD,
-            southD,
-            westD
-        };
+        return toRet;
     }
 
     @Override

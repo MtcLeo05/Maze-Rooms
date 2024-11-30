@@ -1,6 +1,6 @@
 package com.leo.mazerooms.block;
 
-import com.leo.mazerooms.mixin.ChunkMapAccessor;
+import com.leo.mazerooms.world.RoomHandler;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -11,11 +11,9 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.state.BlockState;
-
-import java.util.Objects;
+import net.minecraft.world.level.chunk.ChunkAccess;
 
 import static com.leo.mazerooms.event.PoolRoomGenerator.MAZE;
-import static com.leo.mazerooms.event.PoolRoomGenerator.handleFutureChunks;
 
 public class TriggerBlock extends Block {
     public TriggerBlock(Properties properties) {
@@ -51,14 +49,9 @@ public class TriggerBlock extends Block {
         if(!(sPlayer.level() instanceof ServerLevel sLevel)) return;
         if(!sLevel.dimension().equals(MAZE)) return;
 
-        ChunkMapAccessor chunkMap = (ChunkMapAccessor) sLevel.getChunkSource().chunkMap;
-
-        if(chunkMap.getVisibleChunkMap().isEmpty()) return;
-        if(chunkMap.getVisibleChunkMap().values().isEmpty()) return;
-        if(chunkMap.getVisibleChunkMap().values().stream().noneMatch(Objects::nonNull)) return;
-        if(chunkMap.getVisibleChunkMap().values().stream().noneMatch(o -> o.getTickingChunk() != null)) return;
-
-        handleFutureChunks(chunkMap, sLevel);
+        ChunkAccess chunk = level.getChunk(sPlayer.blockPosition());
+        RoomHandler.handleChunk(chunk, sLevel);
+        RoomHandler.handleFutureChunks(chunk, sLevel);
 
         level.removeBlock(pos, false);
 
