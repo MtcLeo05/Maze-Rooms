@@ -1,7 +1,8 @@
 package com.leo.mazerooms.event;
 
-import com.leo.mazerooms.Mazerooms;
+import com.leo.mazerooms.MazeRooms;
 import com.leo.mazerooms.config.ServerConfig;
+import com.leo.mazerooms.util.CommonUtils;
 import com.leo.mazerooms.world.RoomHandler;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -16,19 +17,20 @@ import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
-@Mod.EventBusSubscriber(modid = Mazerooms.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
+@Mod.EventBusSubscriber(modid = MazeRooms.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class PoolRoomGenerator {
-    public static final ResourceKey<Level> POOL = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(Mazerooms.MODID, "pool"));
+    public static final ResourceKey<Level> POOL = ResourceKey.create(Registries.DIMENSION, CommonUtils.create("pool"));
 
     @SubscribeEvent
     public static void onPlayerChangeChunk(EntityEvent.EnteringSection event) {
         if(!(event.getEntity().level() instanceof ServerLevel sLevel)) return;
         if(!(event.getEntity() instanceof ServerPlayer sPlayer)) return;
+        if(!event.didChunkChange()) return;
         ResourceLocation dimensionName = sLevel.dimension().location();
         if(!dimensionName.getNamespace().equalsIgnoreCase("mazerooms")) return;
 
         LevelChunk chunk = sLevel.getChunk(sPlayer.chunkPosition().x, sPlayer.chunkPosition().z);
-        RoomHandler.handleFutureChunks(chunk, sLevel, dimensionName.getPath());
+        RoomHandler.handleFutureChunks(chunk, sLevel, sPlayer);
     }
 
     @SubscribeEvent
@@ -57,6 +59,6 @@ public class PoolRoomGenerator {
 
         RoomHandler.handleHub(
             sLevel.getChunk(sPlayer.chunkPosition().x,
-                sPlayer.chunkPosition().z), sLevel, dimensionName.getPath());
+                sPlayer.chunkPosition().z), sLevel);
     }
 }

@@ -1,32 +1,22 @@
 package com.leo.mazerooms.data;
 
-import com.leo.mazerooms.Mazerooms;
 import com.leo.mazerooms.util.ListUtil;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunk;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.capabilities.CapabilityManager;
-import net.minecraftforge.common.capabilities.CapabilityToken;
 import net.minecraftforge.common.util.LazyOptional;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-public final class MazeData implements IMazeData {
-    public static ResourceLocation KEY = new ResourceLocation(Mazerooms.MODID, "maze_data");
-    public static CapabilityToken<MazeData> TOKEN = new CapabilityToken<>() {};
-    public static Capability<MazeData> MAZE_DATA = CapabilityManager.get(TOKEN);
+import static com.leo.mazerooms.data.MazeDataProvider.MAZE_DATA;
 
-    public static final MazeData NEW_DATA = new MazeData(false, ListUtil.of());
+public final class MazeData {
     private boolean generated;
     private List<WallDirection> walls;
 
@@ -35,20 +25,25 @@ public final class MazeData implements IMazeData {
         this.walls = walls;
     }
 
+    public MazeData() {
+        this(false, ListUtil.of());
+    }
+
     public static MazeData getOrCreateData(LevelChunk chunk) {
         LazyOptional<MazeData> capability = chunk.getCapability(MAZE_DATA);
-
-        return capability.orElse(NEW_DATA);
+        return capability.orElse(new MazeData());
     }
 
     public static void execute(LevelChunk chunk, Consumer<MazeData> consumer) {
-        Optional<MazeData> optional = chunk.getCapability(MAZE_DATA).resolve();
-        optional.ifPresent(consumer);
+        consumer.accept(MazeData.getOrCreateData(chunk));
     }
 
-    public void replace(MazeData data) {
-        generated = data.generated;
-        walls = data.walls;
+    public void setWalls(List<WallDirection> walls) {
+        this.walls = walls;
+    }
+
+    public void setGenerated(boolean generated) {
+        this.generated = generated;
     }
 
     public int getExitCount() {
@@ -64,6 +59,14 @@ public final class MazeData implements IMazeData {
         }
 
         return false;
+    }
+
+    @Override
+    public String toString() {
+        return "MazeData{" +
+            "generated=" + generated +
+            ", walls=" + walls +
+            '}';
     }
 
     public boolean hasDirection(WallDirection dir) {
@@ -102,18 +105,12 @@ public final class MazeData implements IMazeData {
         south = new ChunkPos(def.x, def.z + 1);
         west = new ChunkPos(def.x - 1, def.z);
 
-        boolean northA, southA, eastA, westA;
         LevelChunk northD, southD, eastD, westD;
 
-        northA = level.hasChunk(north.x, north.z);
-        southA = level.hasChunk(south.x, south.z);
-        eastA = level.hasChunk(east.x, east.z);
-        westA = level.hasChunk(west.x, west.z);
-
-        northD = northA ? level.getChunk(north.x, north.z) : null;
-        southD = southA ? level.getChunk(south.x, south.z) : null;
-        eastD = eastA ? level.getChunk(east.x, east.z) : null;
-        westD = westA ? level.getChunk(west.x, west.z) : null;
+        northD = level.getChunk(north.x, north.z);
+        southD = level.getChunk(south.x, south.z);
+        eastD = level.getChunk(east.x, east.z);
+        westD = level.getChunk(west.x, west.z);
 
         return new LevelChunk[]{
             northD,
@@ -125,13 +122,13 @@ public final class MazeData implements IMazeData {
 
     public static MazeData[] getNearbyChunkData(ChunkAccess chunk, ServerLevel level) {
         if (level == null) return new MazeData[]{
-            NEW_DATA,
-            NEW_DATA,
-            NEW_DATA,
-            NEW_DATA
+            new MazeData(),
+            new MazeData(),
+            new MazeData(),
+            new MazeData()
         };
 
-        MazeData[] toRet = new MazeData[]{NEW_DATA, NEW_DATA, NEW_DATA, NEW_DATA};
+        MazeData[] toRet = new MazeData[]{new MazeData(), new MazeData(), new MazeData(), new MazeData()};
 
         LevelChunk[] nearbyChunks = getNearbyChunks(chunk, level);
 
@@ -145,47 +142,23 @@ public final class MazeData implements IMazeData {
         return toRet;
     }
 
-    @Override
-    public String toString() {
-        return "MazeData[" +
-            "generated=" + generated + ", " +
-            "walls=" + walls + ']';
-    }
-
-    @Override
     public boolean generated() {
         return generated;
     }
 
-    @Override
     public List<WallDirection> walls() {
         return walls;
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == this) return true;
-        if (obj == null || obj.getClass() != this.getClass()) return false;
-        var that = (MazeData) obj;
-        return this.generated == that.generated &&
-            Objects.equals(this.walls, that.walls);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(generated, walls);
-    }
-
-    public CompoundTag saveNBTData(CompoundTag tag) {
+    public void saveNBTData(CompoundTag tag) {
         tag.putBoolean("generated", generated);
 
         List<Integer> walls = this.walls.stream().map(Enum::ordinal).toList();
         tag.putIntArray("walls", walls);
 
-        return tag;
     }
 
-    public void deserializeNBT(CompoundTag tag) {
+    public void loadNBTData(CompoundTag tag) {
         generated = tag.getBoolean("generated");
         Stream<WallDirection> walls = Arrays.stream(tag.getIntArray("walls")).mapToObj(WallDirection::fromIndex);
         this.walls = walls.toList();

@@ -8,6 +8,7 @@ public class ServerConfig {
     public static final ForgeConfigSpec SPEC;
 
     public static final ForgeConfigSpec.BooleanValue SPAWN_IN_POOLROOMS;
+    public static final ForgeConfigSpec.IntValue MAX_CHUNK_DISTANCE;
 
     public static final ForgeConfigSpec.IntValue DEAD_END_NUMBER;
     public static final ForgeConfigSpec.IntValue HALLWAY_NUMBER;
@@ -24,8 +25,13 @@ public class ServerConfig {
             .comment("Whether players should be teleported in the Maze when joining the world in the overworld")
             .define("spawnInMaze", true);
 
+        MAX_CHUNK_DISTANCE = BUILDER
+            .comment("The max distance between the chunk and the player before it's not considered valid to generate")
+            .comment("Do not change this unless you know what you're doing, the config is here mainly to ease testing")
+            .defineInRange("maxChunkDistance", 10, 1, Integer.MAX_VALUE);
+
         BUILDER.pop();
-        BUILDER.push("General");
+        BUILDER.push("Room Config");
 
         DEAD_END_NUMBER = BUILDER
             .comment("How many dead end room files exists, used when generating a random room")

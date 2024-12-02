@@ -49,8 +49,7 @@ public class TriggerBlock extends Block {
         if(!dimensionName.getNamespace().equalsIgnoreCase("mazerooms")) return;
 
         LevelChunk chunk = sLevel.getChunk(sPlayer.chunkPosition().x, sPlayer.chunkPosition().z);
-        RoomHandler.handleChunk(chunk, sLevel, dimensionName.getPath());
-        RoomHandler.handleFutureChunks(chunk, sLevel, dimensionName.getPath());
+        RoomHandler.handleChunk(chunk, sLevel, sPlayer);
 
         level.removeBlock(pos, false);
 

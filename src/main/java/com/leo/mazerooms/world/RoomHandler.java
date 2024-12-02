@@ -1,13 +1,15 @@
 package com.leo.mazerooms.world;
 
-import com.leo.mazerooms.Mazerooms;
+import com.leo.mazerooms.MazeRooms;
 import com.leo.mazerooms.config.ServerConfig;
 import com.leo.mazerooms.data.MazeData;
 import com.leo.mazerooms.data.WallDirection;
 import com.leo.mazerooms.util.ListUtil;
+import com.leo.mazerooms.util.CommonUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Rotation;
@@ -16,40 +18,61 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlac
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
 public class RoomHandler {
+    public static void handleFutureChunks(LevelChunk current, ServerLevel sLevel, ServerPlayer player) {
+        int posX = current.getPos().x, posZ = current.getPos().z, pX = player.chunkPosition().x, pZ = player.chunkPosition().z;
+        if(Math.abs((posX - pX)) + Math.abs((posZ - pZ)) >= ServerConfig.MAX_CHUNK_DISTANCE.get()) return;
 
-    public static void handleFutureChunks(LevelChunk current, ServerLevel sLevel, String dimensionName) {
-        for (LevelChunk chunk : MazeData.getNearbyChunks(current, sLevel)) {
+        LevelChunk[] nearbyChunks = MazeData.getNearbyChunks(current, sLevel);
+        List<LevelChunk> chunks = ListUtil.of();
+
+        for (int i = 0; i < nearbyChunks.length; i++) {
+            LevelChunk chunk = nearbyChunks[i];
             if (chunk == null) continue;
-            MazeData data = MazeData.getOrCreateData(chunk);
-            if (data.generated() && data.isCorner()) continue;
-            MazeData[] nearData = MazeData.getNearbyChunkData(chunk, sLevel);
+            MazeData data = MazeData.getOrCreateData(current);
+            if(data.generated()) {
+                chunks.add(chunk);
+                continue;
+            }
+            WallDirection dir = WallDirection.fromIndex(i);
+            if(!data.hasOpposite(dir)) continue;
+            chunks.add(chunk);
+        }
 
-            if(Arrays.stream(nearData).noneMatch(MazeData::generated)) continue;
-            handleChunk(chunk, sLevel, dimensionName);
+        while(!chunks.isEmpty()) {
+            int random = sLevel.random.nextInt(chunks.size());
+            LevelChunk levelChunk = chunks.get(random);
+            chunks.remove(levelChunk);
+            handleChunk(levelChunk, sLevel, player);
         }
     }
 
-    public static void handleHub(LevelChunk chunk, ServerLevel level, String dimensionName) {
+    public static void handleHub(LevelChunk chunk, ServerLevel level) {
         MazeData data = MazeData.getOrCreateData(chunk);
         if (data.generated()) return;
-        placeChunkRoom(chunk, level, new ResourceLocation(Mazerooms.MODID, dimensionName + "/room_hub"));
-        MazeData.execute(chunk, (d) -> d.replace(new MazeData(false, ListUtil.of(WallDirection.values()))));
+        String dimensionName = level.dimension().location().getPath();
+        placeChunkRoom(chunk, level, CommonUtils.create(dimensionName + "/room_hub"));
+        data = new MazeData(false, ListUtil.of(WallDirection.values()));
+        CommonUtils.saveData(chunk, data);
     }
 
-    public static void handleChunk(LevelChunk chunk, ServerLevel level, String dimensionName) {
+    public static void handleChunk(LevelChunk chunk, ServerLevel level, ServerPlayer player) {
         MazeData data = MazeData.getOrCreateData(chunk);
-        if (data.generated()) return;
+        if (data.generated()) {
+            handleFutureChunks(chunk, level, player);
+            return;
+        }
 
         //Check and replace hub room
         if(data.walls().size() >= 4) {
-            placeChunkRoom(chunk, level, new ResourceLocation(Mazerooms.MODID, dimensionName + "/room_3_0"));
-            MazeData.execute(chunk, (d) -> d.replace(new MazeData(true, ListUtil.of(WallDirection.values()))));
-            handleFutureChunks(chunk, level, dimensionName);
+            String dimensionName = level.dimension().location().getPath();
+            data = new MazeData(true, ListUtil.of(WallDirection.values()));
+            CommonUtils.saveData(chunk, data);
+            placeChunkRoom(chunk, level, CommonUtils.create(dimensionName + "/room_3_0"));
+            handleFutureChunks(chunk, level, player);
             return;
         }
 
@@ -57,59 +80,64 @@ public class RoomHandler {
 
         MazeData[] nearbyData = MazeData.getNearbyChunkData(chunk, level);
 
-        int remove = 0;
+        int remove = -1;
+
         //Check for already opened rooms nearby
         for (int i = 0; i < nearbyData.length; i++) {
             MazeData sideData = nearbyData[i];
             if(!sideData.generated()) continue;
-            WallDirection dir = WallDirection.fromIndex(i).opposite();
-            if(sideData.hasDirection(dir)) {
-                walls.add(WallDirection.fromIndex(i));
+            WallDirection dir = WallDirection.fromIndex(i);
+            if(sideData.hasOpposite(dir)) {
+                walls.add(dir);
                 remove++;
             }
         }
 
         int numberOfPaths = getWeightedRandom(new int[]{0, 1, 2, 3}, new double[]{0, 0.0, 0.75, 0.25}, level.random);
-        List<Integer> possibleWallMap = ListUtil.of(0, 1, 2, 3);
 
+        List<WallDirection> possibleWalls = ListUtil.of(WallDirection.values());
         //Randomize new entrances based on how many were already opened
         for (int currentWallIndex = 0; currentWallIndex < numberOfPaths - remove; currentWallIndex++) {
             //If all entrances are open break loop
-            if (possibleWallMap.isEmpty()) break;
+            if (possibleWalls.isEmpty()) break;
 
             //Randomize direction
-            int wallToOpen = level.random.nextInt(possibleWallMap.size());
-            int wallDir = possibleWallMap.get(wallToOpen);
+            int wallToOpen = level.random.nextInt(possibleWalls.size());
+            WallDirection wallDir = possibleWalls.get(wallToOpen);
 
-            WallDirection sideDir = WallDirection.fromIndex(wallDir).opposite();
-            boolean isSelectedWallOpen = walls.contains(WallDirection.fromIndex(wallDir));
+            boolean isSelectedWallOpen = walls.contains(wallDir);
 
             //If the selected wall is already open, remove it from the available ones
             if (isSelectedWallOpen) {
-                possibleWallMap.remove((Integer) wallDir);
+                possibleWalls.remove(wallDir);
                 currentWallIndex--;
                 continue;
             }
 
+            WallDirection opposite = wallDir.opposite();
             boolean chunkGen = nearbyData[currentWallIndex].generated();
-            boolean isOppositeWallOpen = nearbyData[currentWallIndex].hasDirection(sideDir);
+            boolean isOppositeWallOpen = nearbyData[currentWallIndex].hasDirection(opposite);
 
             //If the nearby chunk is already generated, and the opposite wall to the selected one is closed,
             // remove it from the available ones to avoid ugly dead ends
             if (chunkGen && !isOppositeWallOpen) {
-                possibleWallMap.remove((Integer) wallDir);
+                possibleWalls.remove(wallDir);
                 currentWallIndex--;
                 continue;
             }
 
             //Open the wall and remove it from the available ones
-            walls.add(WallDirection.fromIndex(wallDir));
-            possibleWallMap.remove((Integer) wallDir);
+            walls.add(wallDir);
+            possibleWalls.remove(wallDir);
         }
 
-        MazeData.execute(chunk, (d) -> d.replace(new MazeData(true, walls)));
-        handleChunkRoom(chunk, level, dimensionName);
-        handleFutureChunks(chunk, level, dimensionName);
+        data = new MazeData(true, walls);
+
+        CommonUtils.saveData(chunk, data);
+
+        MazeRooms.LOGGER.info("Chunk: {}, Maze Data: {}", chunk.getPos(), MazeData.getOrCreateData(chunk));
+        handleChunkRoom(chunk, level);
+        handleFutureChunks(chunk, level, player);
     }
 
     public static void placeChunkRoom(LevelChunk chunk, ServerLevel level, ResourceLocation room) {
@@ -123,7 +151,7 @@ public class RoomHandler {
         StructureTemplate template = manager.getOrCreate(room);
 
         BlockPos center = new BlockPos(7, pos.getY(), 7);
-        Rotation rot = gerRoomRotation(data);
+        Rotation rot = getRoomRotation(data);
 
         BlockPos toUse = pos.immutable();
         BlockPos offset = new BlockPos(0, 0, 0);
@@ -136,59 +164,35 @@ public class RoomHandler {
         template.placeInWorld(level, toUse, toUse, new StructurePlaceSettings().setRotationPivot(center).setRotation(rot), level.random, 3);
     }
 
-    public static void handleChunkRoom(LevelChunk chunk, ServerLevel level, String dimensionName) {
-        placeChunkRoom(chunk, level, getRoomToPlace(chunk, dimensionName));
+    public static void handleChunkRoom(LevelChunk chunk, ServerLevel level) {
+        placeChunkRoom(chunk, level, getRoomToPlace(chunk, level));
     }
 
-    public static Rotation gerRoomRotation(MazeData data) {
-        int n = data.walls().size();
+    public static Rotation getRoomRotation(MazeData data) {
+        if(!data.generated()) return Rotation.NONE;
 
-        WallDirection start = null;
-        for (int i = 0; i < n; i++) {
-            if (data.hasDirection(WallDirection.fromIndex(i))) {
-                start = WallDirection.fromIndex(i);
-                break;
-            }
-        }
-
-        long exitCount = data.getExitCount();
+        WallDirection start = data.walls().get(0).opposite();
+        int exitCount = data.getExitCount();
 
         //Dead ends
-        if (start != null && exitCount == 1) {
+        if (exitCount == 1) {
             return determineRotation(start);
+        }
+
+        if(exitCount == 3) {
+            int count = data.walls().stream().map(Enum::ordinal).mapToInt(Integer::intValue).sum();
+            return determineRotation(WallDirection.fromIndex(count - 5));
         }
 
         // Hallways / Corners
         if (exitCount == 2) {
             if (data.isCorner()) {
-                WallDirection dir = data.walls().stream().findFirst().get();
-
                 return data.isLeft() ?
-                    determineRotation(dir.counterClockwise()) :
-                    determineRotation(dir.clockwise());
-            } else {
-                if (data.hasDirection(WallDirection.fromIndex(0)) &&
-                    data.hasDirection(WallDirection.fromIndex(2))) {
-                    return Rotation.NONE;
-                }
-
-                if (data.hasDirection(WallDirection.fromIndex(1)) &&
-                    data.hasDirection(WallDirection.fromIndex(3))) {
-                    return Rotation.CLOCKWISE_90;
-                }
+                    determineRotation(start.counterClockwise()) :
+                    determineRotation(start.clockwise());
             }
-        }
 
-        // T - Rooms
-        if (exitCount == 3) {
-            WallDirection wallDirection = null;
-            for (int i = 0; i < n; i++) {
-                if (data.hasDirection(WallDirection.fromIndex(i))) {
-                    wallDirection = WallDirection.fromIndex(i);
-                    break;
-                }
-            }
-            return (wallDirection != null ? determineRotation(wallDirection.clockwise()): Rotation.NONE );
+            return determineRotation(start);
         }
 
         //Intersections
@@ -204,14 +208,16 @@ public class RoomHandler {
         };
     }
 
-    public static ResourceLocation getRoomToPlace(LevelChunk chunk, String dimensionName) {
+    public static ResourceLocation getRoomToPlace(LevelChunk chunk, ServerLevel level) {
         MazeData data = MazeData.getOrCreateData(chunk);
         int roomNumber = Math.toIntExact(data.getExitCount());
+
+        String dimensionName = level.dimension().location().getPath();
 
         int availableRoomsPerType = ServerConfig.getRoomNumberFromType(data.isCorner() ? 4 : roomNumber);
         int roomType = new Random().nextInt(0, availableRoomsPerType);
 
-        return new ResourceLocation(Mazerooms.MODID, dimensionName + "/room_" + (roomNumber - 1) + (data.isCorner() ? "_c_" : "_") + roomType);
+        return CommonUtils.create(dimensionName + "/room_" + (roomNumber - 1) + (data.isCorner() ? (data.isLeft()? "_cc_": "_c_") : "_") + roomType);
     }
 
     public static int getWeightedRandom(int[] values, double[] weights, RandomSource random) {

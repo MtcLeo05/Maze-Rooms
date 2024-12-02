@@ -1,6 +1,6 @@
 package com.leo.mazerooms.init;
 
-import com.leo.mazerooms.Mazerooms;
+import com.leo.mazerooms.MazeRooms;
 import com.leo.mazerooms.block.TriggerBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -12,7 +12,7 @@ import net.minecraftforge.registries.RegistryObject;
 
 public class ModBlocks {
 
-    public static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, Mazerooms.MODID);
+    public static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, MazeRooms.MODID);
 
     public static final RegistryObject<Block> MAZE_TILE = BLOCKS.register("maze_tile",
         () -> new Block(
