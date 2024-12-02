@@ -10,7 +10,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraftforge.event.entity.EntityEvent;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
@@ -29,8 +28,7 @@ public class PoolRoomGenerator {
         ResourceLocation dimensionName = sLevel.dimension().location();
         if(!dimensionName.getNamespace().equalsIgnoreCase("mazerooms")) return;
 
-        LevelChunk chunk = sLevel.getChunk(sPlayer.chunkPosition().x, sPlayer.chunkPosition().z);
-        RoomHandler.handleFutureChunks(chunk, sLevel, sPlayer);
+        RoomHandler.handlePlayerChunkChange(sPlayer,  sLevel);
     }
 
     @SubscribeEvent

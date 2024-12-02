@@ -1,6 +1,5 @@
 package com.leo.mazerooms.data;
 
-import com.leo.mazerooms.util.ListUtil;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
@@ -9,6 +8,7 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraftforge.common.util.LazyOptional;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
@@ -26,7 +26,7 @@ public final class MazeData {
     }
 
     public MazeData() {
-        this(false, ListUtil.of());
+        this(false, new ArrayList<>());
     }
 
     public static MazeData getOrCreateData(LevelChunk chunk) {
@@ -148,6 +148,17 @@ public final class MazeData {
 
     public List<WallDirection> walls() {
         return walls;
+    }
+
+    public static LevelChunk getChunkFromDirection(LevelChunk current, WallDirection direction, ServerLevel level) {
+        ChunkPos currentPos = current.getPos();
+        ChunkPos neighborPos = switch (direction) {
+            case NORTH -> new ChunkPos(currentPos.x, currentPos.z - 1);
+            case SOUTH -> new ChunkPos(currentPos.x, currentPos.z + 1);
+            case WEST -> new ChunkPos(currentPos.x - 1, currentPos.z);
+            case EAST -> new ChunkPos(currentPos.x + 1, currentPos.z);
+        };
+        return level.getChunkSource().getChunk(neighborPos.x, neighborPos.z, false);
     }
 
     public void saveNBTData(CompoundTag tag) {

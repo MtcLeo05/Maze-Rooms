@@ -11,7 +11,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.LevelChunk;
 
 public class TriggerBlock extends Block {
     public TriggerBlock(Properties properties) {
@@ -48,8 +47,8 @@ public class TriggerBlock extends Block {
         ResourceLocation dimensionName = sLevel.dimension().location();
         if(!dimensionName.getNamespace().equalsIgnoreCase("mazerooms")) return;
 
-        LevelChunk chunk = sLevel.getChunk(sPlayer.chunkPosition().x, sPlayer.chunkPosition().z);
-        RoomHandler.handleChunk(chunk, sLevel, sPlayer);
+
+        RoomHandler.handlePlayerChunkChange(sPlayer,  sLevel);
 
         level.removeBlock(pos, false);
 

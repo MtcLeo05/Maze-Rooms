@@ -14,12 +14,4 @@ public class ListUtil {
             List.of(ts)
         );
     }
-
-    /**
-     * Converts a List to a List that is surely mutable
-     */
-    public static <T> List<T> mutable(List<T> list) {
-        return new ArrayList<>(list);
-    }
-
 }
