@@ -6,6 +6,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.ChunkAccess;
@@ -128,6 +129,17 @@ public record MazeData(boolean generated, List<WallDirection> walls) implements 
         }
 
         return toRet;
+    }
+
+    public static ChunkAccess getChunkFromDirection(ChunkAccess current, WallDirection direction, ServerLevel level) {
+        ChunkPos currentPos = current.getPos();
+        ChunkPos neighborPos = switch (direction) {
+            case NORTH -> new ChunkPos(currentPos.x, currentPos.z - 1);
+            case SOUTH -> new ChunkPos(currentPos.x, currentPos.z + 1);
+            case WEST -> new ChunkPos(currentPos.x - 1, currentPos.z);
+            case EAST -> new ChunkPos(currentPos.x + 1, currentPos.z);
+        };
+        return level.getChunkSource().getChunk(neighborPos.x, neighborPos.z, false);
     }
 
     @Override

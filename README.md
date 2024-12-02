@@ -36,7 +36,8 @@ Now for the structures, head over to `data/mazerooms/structure/name` where name 
 - They must follow a naming convention based on how many open walls they have:
   * `room_0` for dead ends (so 1 entrance and 3 walls)
   * `room_1` for hallways ends (so 2 entrances and 2 walls)
-  * `room_1_c` for corners (so 2 entrances and 2 walls, but the entrances are clockwise)
+  * `room_1_c` for clockwise corners (so 2 entrances and 2 walls)
+  * `room_1_cc` for counter-clockwise corners (so 2 entrances and 2 walls)
   * `room_2` for t rooms (so 3 entrances and 1 wall)
   * `room_3` for intersections (for no walls)
   * `room_hub` for the hub (the hub is the first room you spawn in. It should have 4 walls and at least 1 trigger block)

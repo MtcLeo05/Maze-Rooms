@@ -24,7 +24,9 @@ public enum WallDirection implements StringRepresentable {
 
         return null;
     }
+
     public static WallDirection fromIndex(int i) {
+        i = Math.abs(i % 4);
         return values()[i];
     }
 
