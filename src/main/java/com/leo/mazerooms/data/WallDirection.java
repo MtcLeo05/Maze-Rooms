@@ -5,8 +5,8 @@ import net.minecraft.util.StringRepresentable;
 
 public enum WallDirection implements StringRepresentable {
     NORTH("north"),
-    EAST("south"),
-    SOUTH("east"),
+    EAST("east"),
+    SOUTH("south"),
     WEST("west");
 
     public static final Codec<WallDirection> CODEC = StringRepresentable.fromEnum(WallDirection::values);
@@ -25,8 +25,7 @@ public enum WallDirection implements StringRepresentable {
         return null;
     }
     public static WallDirection fromIndex(int i) {
-        i = Math.abs(i % 4);
-        return values()[i];
+        return values()[Math.floorMod(i, 4)];
     }
 
     public WallDirection clockwise() {

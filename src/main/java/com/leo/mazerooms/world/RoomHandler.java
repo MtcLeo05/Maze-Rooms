@@ -22,6 +22,8 @@ import java.util.*;
 
 public class RoomHandler {
 
+    private static int wallsCarryOver = 0;
+
     public static void handlePlayerChunkChange(ServerPlayer player, ServerLevel sLevel) {
         int maxDistance = ServerConfig.MAX_CHUNK_DISTANCE.get();
         ChunkPos playerPos = player.chunkPosition();
@@ -35,6 +37,9 @@ public class RoomHandler {
                 }
             }
         }
+
+        chunksToCheck.sort((p, q) -> (Math.abs(p.x - playerPos.x) + Math.abs(p.z - playerPos.z))
+                - (Math.abs(q.x - playerPos.x) + Math.abs(q.z - playerPos.z)));
 
         for (ChunkPos pos : chunksToCheck) {
             if (!processedChunks.contains(pos)) {
@@ -100,14 +105,13 @@ public class RoomHandler {
             data = new MazeData(true, ListUtil.of(WallDirection.values()));
             CommonUtils.saveData(chunk, data);
             placeChunkRoom(chunk, level, CommonUtils.create(dimensionName + "/room_3_0"));
-            handleFutureChunks(chunk, level, player);
+            // handleFutureChunks(chunk, level, player);
             return;
         }
 
         List<WallDirection> walls = new ArrayList<>();
         MazeData[] nearbyData = MazeData.getNearbyChunkData(chunk, level);
-
-        int addedWalls = 0;
+        List<WallDirection> possibleWalls = ListUtil.of(WallDirection.values());
 
         // Synchronize connections with neighbors
         for (int i = 0; i < nearbyData.length; i++) {
@@ -115,32 +119,24 @@ public class RoomHandler {
             if (sideData == null || !sideData.generated()) continue;
 
             WallDirection dir = WallDirection.fromIndex(i);
-            WallDirection opposite = dir.opposite();
 
-            if (sideData.hasDirection(opposite)) {
+            if (sideData.hasOpposite(dir)) {
                 if (!walls.contains(dir)) {
                     walls.add(dir);
-                    addedWalls++;
                 }
             }
 
-            // Ensure the neighbor's data reflects the connection back to this chunk
-            if (!sideData.hasDirection(opposite)) {
-                sideData.walls().add(opposite);
-                CommonUtils.saveData(MazeData.getChunkFromDirection(chunk, dir, level), sideData);
-            }
+            possibleWalls.remove(dir);
         }
 
         // Add additional random walls
-        int numberOfPaths = getWeightedRandom(new int[]{0, 1, 2, 3}, new double[]{0, 0.0, 0.75, 0.25}, level.random);
+        int numberOfPaths = getWeightedRandom(new int[] { 1, 2, 3, 4 }, new double[] { 0.05, 0.75, 0.15, 0.05 },
+                level.random);
 
-        // Determine additional random connections
-        List<WallDirection> possibleWalls = ListUtil.of(WallDirection.values());
-        possibleWalls.removeAll(walls); // Remove already connected walls
+        numberOfPaths += wallsCarryOver; // TODO: Evaluate thread safety
+        wallsCarryOver = 0;
 
-        for (int currentWallIndex = 0; currentWallIndex < numberOfPaths - addedWalls; currentWallIndex++) {
-            if (possibleWalls.isEmpty()) break; // All walls are already open
-
+        while (numberOfPaths > walls.size() && !possibleWalls.isEmpty()) {
             // Randomize direction
             int wallToOpen = level.random.nextInt(possibleWalls.size());
             WallDirection wallDir = possibleWalls.get(wallToOpen);
@@ -148,16 +144,17 @@ public class RoomHandler {
             // Open the wall and remove it from the available ones
             walls.add(wallDir);
             possibleWalls.remove(wallDir);
+        }
 
-            // Also ensure the neighboring chunk reflects this connection
-            LevelChunk neighborChunk = MazeData.getChunkFromDirection(chunk, wallDir, level);
-            if (neighborChunk != null) {
-                MazeData neighborData = MazeData.getOrCreateData(neighborChunk);
-                if (!neighborData.hasDirection(wallDir.opposite())) {
-                    neighborData.walls().add(wallDir.opposite());
-                    CommonUtils.saveData(neighborChunk, neighborData);
-                }
-            }
+        wallsCarryOver = Math.max(0, numberOfPaths - walls.size());
+
+        // Avoid generating rooms without connections.
+        // (NOT actually connect, it avoids errors caused by the absence of the
+        // corresponding structure file.)
+        if (walls.size() == 0) {
+            int wallToOpen = level.random.nextInt(4);
+            WallDirection wallDir = WallDirection.values()[wallToOpen];
+            walls.add(wallDir);
         }
 
         // Save the updated maze data for this chunk
@@ -166,7 +163,7 @@ public class RoomHandler {
 
         MazeRooms.LOGGER.info("Chunk: {}, Maze Data: {}", chunk.getPos(), MazeData.getOrCreateData(chunk));
         handleChunkRoom(chunk, level);
-        handleFutureChunks(chunk, level, player);
+        // handleFutureChunks(chunk, level, player);
     }
 
     public static void placeChunkRoom(LevelChunk chunk, ServerLevel level, ResourceLocation room) {
@@ -208,9 +205,9 @@ public class RoomHandler {
             return determineRotation(start);
         }
 
-        if(exitCount == 3) {
+        if (exitCount == 3) {
             int count = data.walls().stream().map(Enum::ordinal).mapToInt(Integer::intValue).sum();
-            return determineRotation(WallDirection.fromIndex(count - 5));
+            return determineRotation(WallDirection.fromIndex(5 - count));
         }
 
         // Hallways / Corners
