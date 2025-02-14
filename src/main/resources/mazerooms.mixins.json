@@ -5,7 +5,6 @@
     "compatibilityLevel": "JAVA_8",
     "refmap": "mazerooms.refmap.json",
     "mixins": [
-        "ChunkMapAccessor"
     ],
     "client": [
     ],
