@@ -2,6 +2,7 @@ package com.leo.mazerooms.world;
 
 import com.leo.mazerooms.MazeRooms;
 import com.leo.mazerooms.config.ServerConfig;
+import com.leo.mazerooms.config.WeightConfigs;
 import com.leo.mazerooms.data.MazeData;
 import com.leo.mazerooms.data.WallDirection;
 import com.leo.mazerooms.util.CommonUtils;
@@ -130,7 +131,7 @@ public class RoomHandler {
         }
 
         // Add additional random walls
-        int numberOfPaths = getWeightedRandom(new int[] { 1, 2, 3, 4 }, new double[] { 0.05, 0.75, 0.15, 0.05 },
+        int numberOfPaths = getWeightedRandom(WeightConfigs.getInstance().fromDimension(level.dimension()),
                 level.random);
 
         numberOfPaths += wallsCarryOver; // TODO: Evaluate thread safety
@@ -246,10 +247,9 @@ public class RoomHandler {
         return CommonUtils.create(dimensionName + "/room_" + (roomNumber - 1) + (data.isCorner() ? (data.isLeft()? "_cc_": "_c_") : "_") + roomType);
     }
 
-    public static int getWeightedRandom(int[] values, double[] weights, RandomSource random) {
-        if (values.length != weights.length) {
-            throw new IllegalArgumentException("Values and weights must have the same length");
-        }
+    public static int getWeightedRandom(WeightConfigs.DimensionConfig config, RandomSource random) {
+        int[] values = {1, 2, 3, 4};
+        double[] weights = new double[]{config.one(), config.two(), config.three(), config.four()};
 
         double totalWeight = 0;
         for (double weight : weights) {
