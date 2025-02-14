@@ -1,6 +1,7 @@
 package com.leo.mazerooms;
 
 import com.leo.mazerooms.config.ServerConfig;
+import com.leo.mazerooms.config.WeightConfigs;
 import com.leo.mazerooms.init.ModAttachmentTypes;
 import com.leo.mazerooms.init.ModBlocks;
 import com.leo.mazerooms.init.ModGenerators;
@@ -23,6 +24,9 @@ public class MazeRooms {
     // The constructor for the mod class is the first code that is run when your mod is loaded.
     // FML will recognize some parameter types like IEventBus or ModContainer and pass them in automatically.
     public MazeRooms(IEventBus modEventBus, ModContainer modContainer) {
+
+        WeightConfigs.getInstance().load();
+
         ModItems.ITEMS.register(modEventBus);
         ModBlocks.BLOCKS.register(modEventBus);
 
